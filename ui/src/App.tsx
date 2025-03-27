@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import SearchBox from './components/SearchBox';
+import WorkoutPanel from './components/WorkoutPanel';
 import { fetchExercises } from './services/api';
 import { Exercise } from './types/exercise';
 
@@ -8,6 +9,7 @@ function App() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
 
   useEffect(() => {
     const loadExercises = async () => {
@@ -36,7 +38,11 @@ function App() {
     <div className="App">
       <div className="search-container">
         <h1>Fitness Tracker</h1>
-        <SearchBox exercises={exercises} />
+        <SearchBox 
+          exercises={exercises} 
+          onExerciseSelect={setSelectedExercise}
+        />
+        <WorkoutPanel selectedExercise={selectedExercise} />
       </div>
     </div>
   );

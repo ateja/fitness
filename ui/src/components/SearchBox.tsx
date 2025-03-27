@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect, KeyboardEvent } from 'react';
 import Fuse from 'fuse.js';
-import { Exercise } from '../data/exerciseData';
+import { Exercise } from '../types/exercise';
 import './SearchBox.css';
 
 interface Props {
   exercises: Exercise[];
+  onExerciseSelect: (exercise: Exercise) => void;
 }
 
-const SearchBox: React.FC<Props> = ({ exercises }) => {
+const SearchBox: React.FC<Props> = ({ exercises, onExerciseSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<Exercise[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -41,6 +42,7 @@ const SearchBox: React.FC<Props> = ({ exercises }) => {
     setResults([]);
     setIsSearching(false);
     setSelectedIndex(-1);
+    onExerciseSelect(item);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
