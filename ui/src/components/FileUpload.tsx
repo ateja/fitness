@@ -5,7 +5,12 @@ import { WorkoutData } from '../services/googleSheets';
 
 const API_BASE_URL = 'http://localhost:5000';
 
-const FileUpload: React.FC = () => {
+interface FileUploadProps {
+  traineeName: string;
+  traineeId: string;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +21,7 @@ const FileUpload: React.FC = () => {
     if (file) {
       setSelectedFile(file);
       setError(null);
-      setWorkoutData([]); // Reset workout data when new file is selected
+      setWorkoutData([]);
     }
   };
 
@@ -111,6 +116,8 @@ const FileUpload: React.FC = () => {
               key={`${data.exercise}-${index}`}
               exercise={data.exercise}
               sets={data.sets}
+              traineeName={traineeName}
+              traineeId={traineeId}
             />
           ))}
         </div>

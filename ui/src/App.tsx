@@ -8,6 +8,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [googleApiError, setGoogleApiError] = useState<string | null>(null);
+  const [selectedTrainee, setSelectedTrainee] = useState<TraineeFile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -38,11 +40,14 @@ function App() {
 
   const handleSignIn = async () => {
     try {
+      setIsLoading(true);
       const success = await signIn();
       setIsAuthenticated(success);
     } catch (err) {
       console.error('Sign in error:', err);
       setGoogleApiError('Failed to sign in with Google');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -50,6 +55,7 @@ function App() {
     try {
       signOut();
       setIsAuthenticated(false);
+      setSelectedTrainee(null);
     } catch (err) {
       console.error('Sign out error:', err);
       setGoogleApiError('Failed to sign out');
@@ -57,8 +63,7 @@ function App() {
   };
 
   const handleLoadWorkout = (trainee: TraineeFile) => {
-    // TODO: Implement workout loading logic with the selected trainee
-    console.log('Loading workout for trainee:', trainee.name, 'with ID:', trainee.id);
+    setSelectedTrainee(trainee);
   };
 
   const handleCreateWorkout = () => {
@@ -67,16 +72,25 @@ function App() {
   };
 
   if (loading) {
-    return <div className="App">Loading...</div>;
+    return <div className="loading">Loading...</div>;
   }
 
   if (googleApiError) {
+    return <div className="error">{googleApiError}</div>;
+  }
+
+  if (!isAuthenticated) {
     return (
-      <div className="App">
-        <div className="error-message">
-          {googleApiError}
-          <button onClick={() => window.location.reload()} className="auth-button">
-            Retry
+      <div className="sign-in-container">
+        <div className="sign-in-content">
+          <h1 className="sign-in-title">Fitness Tracker</h1>
+          <p className="sign-in-message">Please sign in to access your workout data</p>
+          <button 
+            onClick={handleSignIn} 
+            className="sign-in-button"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Signing in...' : 'Sign in with Google'}
           </button>
         </div>
       </div>
@@ -84,26 +98,23 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <div className="app-container">
+    <div className="app-container">
+      <div className="header">
         <h1>Fitness Tracker</h1>
-        {!isAuthenticated ? (
-          <button onClick={handleSignIn} className="auth-button">
-            Sign in with Google
-          </button>
-        ) : (
-          <>
-            <button onClick={handleSignOut} className="auth-button">
-              Sign out
-            </button>
-            <Wizard
-              onLoadWorkout={handleLoadWorkout}
-              onCreateWorkout={handleCreateWorkout}
-            />
-            <FileUpload />
-          </>
-        )}
+        <button onClick={handleSignOut} className="sign-out-button">
+          Sign Out
+        </button>
       </div>
+      <Wizard 
+        onLoadWorkout={handleLoadWorkout}
+        onCreateWorkout={handleCreateWorkout}
+      />
+      {selectedTrainee && (
+        <FileUpload 
+          traineeName={selectedTrainee.name}
+          traineeId={selectedTrainee.id}
+        />
+      )}
     </div>
   );
 }
