@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
 import './FileUpload.css';
+import WorkoutPanel from './WorkoutPanel';
+import { WorkoutData } from '../services/googleSheets';
+
+const API_BASE_URL = 'http://localhost:5000';
 
 const FileUpload: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [workoutData, setWorkoutData] = useState<WorkoutData[]>([]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
       setError(null);
+      setWorkoutData([]); // Reset workout data when new file is selected
     }
   };
 
@@ -24,21 +30,43 @@ const FileUpload: React.FC = () => {
     setError(null);
 
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    formData.append('image', selectedFile);
 
     try {
-      const response = await fetch('/upload', {
+      console.log('Sending request to server...');
+      const response = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
         throw new Error('Upload failed');
       }
 
+      if (!data.exercises) {
+        console.error('Invalid data structure:', data);
+        throw new Error('Invalid response format from server');
+      }
+
+      const processedData = data.exercises.map((exercise: any) => ({
+        exercise: exercise.name,
+        sets: exercise.sets.map((set: any, index: number) => ({
+          setNumber: index + 1,
+          reps: set.reps.toString(),
+          weight: set.weight.toString()
+        }))
+      }));
+
+      console.log('Processed workout data:', processedData);
+      setWorkoutData(processedData);
       setUploadStatus('Upload successful!');
       setSelectedFile(null);
     } catch (err) {
+      console.error('Upload error:', err);
       setError('Failed to upload file. Please try again.');
       setUploadStatus('');
     }
@@ -74,6 +102,17 @@ const FileUpload: React.FC = () => {
       {error && (
         <div className="error-message">
           {error}
+        </div>
+      )}
+      {workoutData.length > 0 && (
+        <div className="workout-panels">
+          {workoutData.map((data, index) => (
+            <WorkoutPanel 
+              key={`${data.exercise}-${index}`}
+              exercise={data.exercise}
+              sets={data.sets}
+            />
+          ))}
         </div>
       )}
     </div>
