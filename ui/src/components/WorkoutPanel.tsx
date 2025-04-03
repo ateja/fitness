@@ -1,63 +1,31 @@
 import React from 'react';
-import { Exercise } from '../types/exercise';
 import './WorkoutPanel.css';
+import { Set } from '../services/googleSheets';
 
 interface WorkoutPanelProps {
-  selectedExercise: Exercise | null;
+  exercise: string;
+  sets: Set[];
 }
 
-interface Set {
-  weight: number;
-  reps: number;
-}
-
-const WorkoutPanel: React.FC<WorkoutPanelProps> = ({ selectedExercise }) => {
-  const [sets, setSets] = React.useState<Set[]>([
-    { weight: 0, reps: 0 },
-    { weight: 0, reps: 0 },
-    { weight: 0, reps: 0 },
-    { weight: 0, reps: 0 }
-  ]);
-
-  const handleSetChange = (index: number, field: 'weight' | 'reps', value: string) => {
-    const newSets = [...sets];
-    newSets[index] = {
-      ...newSets[index],
-      [field]: value === '' ? 0 : Number(value)
-    };
-    setSets(newSets);
-  };
-
-  if (!selectedExercise) {
-    return null;
-  }
-
+const WorkoutPanel: React.FC<WorkoutPanelProps> = ({ exercise, sets }) => {
   return (
     <div className="workout-panel">
-      <h2 className="exercise-title">{selectedExercise.name}</h2>
-      <div className="sets-container">
-        {sets.map((set, index) => (
-          <div key={index} className="set-row">
-            <span className="set-number">{index + 1}</span>
-            <div className="set-inputs">
-              <input
-                type="number"
-                value={set.weight || ''}
-                onChange={(e) => handleSetChange(index, 'weight', e.target.value)}
-                placeholder="Weight"
-                min="0"
-              />
-              <span className="set-separator">×</span>
-              <input
-                type="number"
-                value={set.reps || ''}
-                onChange={(e) => handleSetChange(index, 'reps', e.target.value)}
-                placeholder="Reps"
-                min="0"
-              />
+      <h2 className="exercise-title">{exercise}</h2>
+      <div className="workout-table">
+        <div className="table-header">
+          <div className="header-cell">#</div>
+          <div className="header-cell">Reps</div>
+          <div className="header-cell">Weight</div>
+        </div>
+        <div className="table-body">
+          {sets.map((set) => (
+            <div key={set.setNumber} className="table-row">
+              <div className="table-cell">{set.setNumber}</div>
+              <div className="table-cell">{set.reps}</div>
+              <div className="table-cell">{set.weight}</div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
