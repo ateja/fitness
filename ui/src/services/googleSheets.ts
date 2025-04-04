@@ -1,7 +1,22 @@
 import { gapi } from 'gapi-script';
 
-const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
+// Use window._env_ for production environment variables
+const CLIENT_ID = process.env.NODE_ENV === 'production' 
+  ? window._env_?.REACT_APP_GOOGLE_CLIENT_ID 
+  : process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+const API_KEY = process.env.NODE_ENV === 'production'
+  ? window._env_?.REACT_APP_GOOGLE_API_KEY
+  : process.env.REACT_APP_GOOGLE_API_KEY;
+
+// Debug logging
+console.log('Environment variables:', {
+  CLIENT_ID,
+  API_KEY,
+  NODE_ENV: process.env.NODE_ENV,
+  WINDOW_ENV: window._env_
+});
+
 const DISCOVERY_DOCS = [
   'https://sheets.googleapis.com/$discovery/rest?version=v4',
   'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'

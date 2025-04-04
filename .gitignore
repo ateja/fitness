@@ -189,3 +189,7 @@ node_modules/
 
 # OS
 .DS_Store
+
+# Environment variables
+.env
+ui/.env
