@@ -6,12 +6,31 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Debug: Log all environment variables
+console.log('All environment variables:', process.env);
+
+// Check if required environment variables are set
+const requiredVars = ['REACT_APP_GOOGLE_CLIENT_ID', 'REACT_APP_GOOGLE_API_KEY'];
+console.log('Checking for required variables:', requiredVars);
+
+const missingVars = requiredVars.filter(varName => {
+  const exists = process.env[varName] !== undefined;
+  console.log(`${varName}: ${exists ? 'Found' : 'Missing'}`);
+  return !exists;
+});
+
+if (missingVars.length > 0) {
+  console.error('Missing required environment variables:', missingVars.join(', '));
+  process.exit(1);
+}
+
 // Read the environment variables from Azure Static Web Apps
 const envVars = {
-  REACT_APP_GOOGLE_CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID,
-  // Remove any trailing % from the API key
-  REACT_APP_GOOGLE_API_KEY: process.env.REACT_APP_GOOGLE_API_KEY?.replace(/%$/, '')
+  REACT_APP_GOOGLE_CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || '',
+  REACT_APP_GOOGLE_API_KEY: (process.env.REACT_APP_GOOGLE_API_KEY || '').replace(/%$/, '')
 };
+
+console.log('Environment variables to be written:', envVars);
 
 // Create the env-config.js file
 const envConfigFile = path.join(__dirname, 'public', 'env-config.js');
@@ -27,7 +46,5 @@ if (!fs.existsSync(publicDir)) {
 
 // Write the file
 fs.writeFileSync(envConfigFile, envConfigContent);
-
-// Log for debugging
-console.log('Environment variables written to:', envConfigFile);
-console.log('Environment variables:', envVars); 
+console.log('Environment configuration file generated at:', envConfigFile);
+console.log('File contents:', envConfigContent); 

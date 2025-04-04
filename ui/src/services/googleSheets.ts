@@ -3,19 +3,32 @@
 
 // Get environment variables with fallbacks
 const getEnvVar = (key: string): string | undefined => {
+  // Debug logging
+  console.log('Checking environment variable:', key);
+  console.log('window._env_:', window._env_);
+  console.log('process.env:', process.env);
+  
   // Try window._env_ first (production)
   if (window._env_ && window._env_[key]) {
+    console.log(`Found ${key} in window._env_:`, window._env_[key]);
     return window._env_[key];
   }
+  
   // Fall back to process.env (development)
-  return process.env[key];
+  if (process.env[key]) {
+    console.log(`Found ${key} in process.env:`, process.env[key]);
+    return process.env[key];
+  }
+  
+  console.warn(`Environment variable ${key} not found in either location`);
+  return undefined;
 };
 
 const CLIENT_ID = getEnvVar('REACT_APP_GOOGLE_CLIENT_ID');
 const API_KEY = getEnvVar('REACT_APP_GOOGLE_API_KEY');
 
 // Debug logging
-console.log('Environment variables:', {
+console.log('Final environment variables:', {
   CLIENT_ID,
   API_KEY,
   NODE_ENV: process.env.NODE_ENV,
