@@ -27,7 +27,8 @@ if (missingVars.length > 0) {
 // Read the environment variables from Azure Static Web Apps
 const envVars = {
   REACT_APP_GOOGLE_CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || '',
-  REACT_APP_GOOGLE_API_KEY: (process.env.REACT_APP_GOOGLE_API_KEY || '').replace(/%$/, '')
+  REACT_APP_GOOGLE_API_KEY: (process.env.REACT_APP_GOOGLE_API_KEY || '').replace(/%$/, ''),
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL || 'https://gitness-server-ckf7azhdedaffdfh.scm.westus-01.azurewebsites.net'
 };
 
 console.log('Environment variables to be written:', envVars);
