@@ -7,6 +7,8 @@ import time
 import base64
 from openai import OpenAI
 from dotenv import load_dotenv
+from functools import wraps
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -17,12 +19,49 @@ CORS(app)  # Enable CORS for all routes
 # Path to exercises directory (adjust as needed)
 EXERCISES_DIR = Path('../exercises')
 
-# Load API key from .env file
+# Load API keys from .env file
 openai_key = os.getenv("OPENAI_API_KEY")
 if not openai_key:
     raise ValueError("OPENAI_API_KEY not found in .env file")
 
 client = OpenAI(api_key=openai_key)
+
+def validate_token(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'error': 'No token provided'}), 401
+        
+        try:
+            token = auth_header.split('Bearer ')[1]
+            
+            # Verify the token using Google's tokeninfo endpoint
+            tokeninfo_url = f"https://www.googleapis.com/oauth2/v3/tokeninfo?access_token={token}"
+            response = requests.get(tokeninfo_url)
+            tokeninfo = response.json()
+            
+            if 'error' in tokeninfo:
+                print(f"Token validation error: {tokeninfo['error']}")
+                return jsonify({'error': 'Invalid access token'}), 401
+            
+            # Verify the token has the required scopes
+            required_scopes = [
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/drive.readonly'
+            ]
+            
+            token_scopes = tokeninfo.get('scope', '').split()
+            if not all(scope in token_scopes for scope in required_scopes):
+                print(f"Missing required scopes. Required: {required_scopes}, Got: {token_scopes}")
+                return jsonify({'error': 'Missing required scopes'}), 401
+            
+            return f(*args, **kwargs)
+        except Exception as e:
+            print(f"Token validation error: {str(e)}")
+            return jsonify({'error': 'Invalid token'}), 401
+    
+    return decorated_function
 
 def load_exercises():
     exercises = []
@@ -39,6 +78,7 @@ def load_exercises():
     return exercises
 
 @app.route('/exercise/', methods=['GET'])
+@validate_token
 def get_exercises():
     exercises = load_exercises()
     return jsonify(exercises)
@@ -126,6 +166,7 @@ def process_image_with_openai(image_data):
         }
 
 @app.route('/upload', methods=['POST'])
+@validate_token
 def upload_image():
     if 'image' not in request.files:
         return jsonify({"error": "No image provided"}), 400
@@ -139,6 +180,10 @@ def upload_image():
     
     # Return the result directly
     return jsonify(result)
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'healthy'})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000) 
