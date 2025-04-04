@@ -10,6 +10,14 @@ interface FileUploadProps {
   traineeId: string;
 }
 
+interface ExerciseResponse {
+  name: string;
+  sets: Array<{
+    reps: number;
+    weight: number;
+  }>;
+}
+
 const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>('');
@@ -57,9 +65,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
         throw new Error('Invalid response format from server');
       }
 
-      const processedData = data.exercises.map((exercise: any) => ({
+      const processedData = data.exercises.map((exercise: ExerciseResponse) => ({
         exercise: exercise.name,
-        sets: exercise.sets.map((set: any, index: number) => ({
+        sets: exercise.sets.map((set, index) => ({
           setNumber: index + 1,
           reps: set.reps.toString(),
           weight: set.weight.toString()

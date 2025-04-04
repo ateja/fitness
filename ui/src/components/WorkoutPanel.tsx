@@ -8,11 +8,6 @@ interface Set {
   weight: string;
 }
 
-interface Exercise {
-  exercise: string;
-  sets: Set[];
-}
-
 interface WorkoutPanelProps {
   exercise: string;
   sets: Set[];
@@ -22,7 +17,6 @@ interface WorkoutPanelProps {
 
 const WorkoutPanel: React.FC<WorkoutPanelProps> = ({ exercise, sets, traineeName, traineeId }) => {
   const [editableSets, setEditableSets] = useState<Set[]>(sets);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 

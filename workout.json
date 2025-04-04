@@ -1,0 +1,38 @@
+{
+  "month": "April 2025",
+  "workouts": [
+    {
+      "date": "2025-04-01",
+      "exercises": [
+        {
+          "name": "90/90 Hamstring",
+          "sets": [
+            {"reps": 10, "weight": 20},
+            {"reps": 10, "weight": 20},
+            {"reps": 10, "weight": 20}
+          ]
+        },
+        {
+          "name": "Bench Press",
+          "sets": [
+            {"reps": 8, "weight": 100},
+            {"reps": 8, "weight": 110},
+            {"reps": 6, "weight": 120}
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2025-04-02",
+      "exercises": [
+        {
+          "name": "Squat",
+          "sets": [
+            {"reps": 5, "weight": 150},
+            {"reps": 5, "weight": 160}
+          ]
+        }
+      ]
+    }
+  ]
+}

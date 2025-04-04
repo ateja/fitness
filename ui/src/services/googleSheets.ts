@@ -98,7 +98,7 @@ export const getSpreadsheetData = async (spreadsheetId: string, range: string) =
 export const updateSpreadsheetData = async (
   spreadsheetId: string,
   range: string,
-  values: any[][]
+  values: string[][]
 ) => {
   try {
     const response = await gapi.client.sheets.spreadsheets.values.update({
@@ -248,30 +248,29 @@ export const getWorkoutData = async (spreadsheetId: string, sheetName: string, d
       if (!row || row.length < 5) continue;  // Skip incomplete rows
       
       const [rowDate, exercise, setNum, reps, weight] = row;
+      if (rowDate !== date) continue;  // Skip rows for other dates
       
-      // Only process rows matching our date
-      if (rowDate === date) {
-        console.log(`Processing row for ${exercise}: Set ${setNum}, ${reps} reps @ ${weight}`);
-        
-        if (!exerciseMap.has(exercise)) {
-          exerciseMap.set(exercise, []);
-        }
-        
-        exerciseMap.get(exercise)!.push({
-          setNumber: Number(setNum),
-          reps: reps.toString(),
-          weight: weight.toString()
-        });
+      const set: Set = {
+        setNumber: parseInt(setNum),
+        reps: reps.toString(),
+        weight: weight.toString()
+      };
+      
+      if (!exerciseMap.has(exercise)) {
+        exerciseMap.set(exercise, []);
       }
+      exerciseMap.get(exercise)?.push(set);
     }
     
-    // Convert map to array format
-    const workoutData: WorkoutData[] = Array.from(exerciseMap.entries()).map(([exercise, sets]) => ({
-      exercise,
-      sets: sets.sort((a, b) => a.setNumber - b.setNumber)  // Sort sets by number
-    }));
-
-    console.log('Final workout data:', workoutData);
+    // Convert map to array
+    const workoutData: WorkoutData[] = [];
+    for (const [exercise, sets] of Array.from(exerciseMap.entries())) {
+      workoutData.push({
+        exercise,
+        sets: sets.sort((a: Set, b: Set) => a.setNumber - b.setNumber)
+      });
+    }
+    
     return workoutData;
   } catch (error) {
     console.error('Error fetching workout data:', error);
@@ -279,215 +278,57 @@ export const getWorkoutData = async (spreadsheetId: string, sheetName: string, d
   }
 };
 
-interface WorkoutEntry {
-  date: string;
-  exercise: string;
-  set: number;
-  reps: number;
-  weight: number;
-}
-
 export const saveWorkoutData = async (
   spreadsheetId: string,
   sheetName: string,
   workoutData: WorkoutData[],
-  traineeName: string
+  _traineeName: string
 ): Promise<void> => {
+  if (!gapiInitialized) {
+    throw new Error('Google API not initialized');
+  }
+
   try {
-    // First, check if the sheet exists
-    const spreadsheet = await gapi.client.sheets.spreadsheets.get({
-      spreadsheetId
+    // Get current date
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Prepare the data to be written
+    const values: string[][] = [];
+    
+    // Add header row if sheet is empty
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A:E`
     });
-
-    let sheetExists = false;
-    let sheetId: number | null = null;
-
-    // Check if the sheet exists
-    if (spreadsheet.result.sheets) {
-      const existingSheet = spreadsheet.result.sheets.find((sheet: { properties?: { title?: string; sheetId?: number } }) => sheet.properties?.title === sheetName);
-      if (existingSheet) {
-        sheetExists = true;
-        sheetId = existingSheet.properties?.sheetId || null;
+    
+    if (!response.result.values || response.result.values.length === 0) {
+      values.push(['Date', 'Exercise', 'Set', 'Reps', 'Weight']);
+    }
+    
+    // Add workout data
+    for (const workout of workoutData) {
+      for (const set of workout.sets) {
+        values.push([
+          today,
+          workout.exercise,
+          set.setNumber.toString(),
+          set.reps,
+          set.weight
+        ]);
       }
     }
-
-    // If sheet doesn't exist, create it
-    if (!sheetExists) {
-      const addSheetResponse = await gapi.client.sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        resource: {
-          requests: [{
-            addSheet: {
-              properties: {
-                title: sheetName
-              }
-            }
-          }]
-        }
-      });
-
-      sheetId = addSheetResponse.result.replies?.[0]?.addSheet?.properties?.sheetId || null;
-    }
-
-    if (!sheetId) {
-      throw new Error('Failed to get or create sheet');
-    }
-
-    // Get existing data from the sheet
-    const existingData = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheetName}!A:E`  // Updated range to include date column
-    });
-
-    const existingValues = existingData.result.values || [];
-    const headers = ['Date', 'Exercise', 'Set', 'Reps', 'Weight'];
     
-    // Get current date in YYYY-MM-DD format
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    // Prepare the new data rows with date
-    const newRows = workoutData.flatMap(data => 
-      data.sets.map((set, index) => [
-        currentDate,
-        data.exercise,
-        (index + 1).toString(),
-        set.reps,
-        set.weight
-      ])
-    );
-
-    // Combine existing data with new data
-    const allRows = existingValues.length > 0 && existingValues[0][0] === 'Date' 
-      ? [...existingValues, ...newRows]
-      : [headers, ...newRows];
-
-    // Write all data to the sheet
-    await gapi.client.sheets.spreadsheets.values.update({
+    // Write the data
+    await gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!A1:E${allRows.length}`,  // Updated range to include date column
+      range: `${sheetName}!A:E`,
       valueInputOption: 'RAW',
       resource: {
-        values: allRows
+        values
       }
     });
-
-    // Format the sheet
-    await gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      resource: {
-        requests: [
-          // Format headers
-          {
-            repeatCell: {
-              range: {
-                sheetId,
-                startRowIndex: 0,
-                endRowIndex: 1
-              },
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 },
-                  textFormat: { bold: true }
-                }
-              },
-              fields: 'userEnteredFormat(backgroundColor,textFormat)'
-            }
-          },
-          // Format data rows
-          {
-            repeatCell: {
-              range: {
-                sheetId,
-                startRowIndex: 1,
-                endRowIndex: allRows.length
-              },
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: { red: 1, green: 1, blue: 1 }
-                }
-              },
-              fields: 'userEnteredFormat(backgroundColor)'
-            }
-          },
-          // Auto-resize columns
-          {
-            autoResizeDimensions: {
-              dimensions: {
-                sheetId,
-                dimension: 'COLUMNS',
-                startIndex: 0,
-                endIndex: 5  // Updated to include date column
-              }
-            }
-          }
-        ]
-      }
-    });
-
-    console.log('Workout data saved successfully');
   } catch (error) {
     console.error('Error saving workout data:', error);
-    throw error;
-  }
-};
-
-const getOrCreateSpreadsheet = async (traineeName: string) => {
-  try {
-    // Try to find existing spreadsheet
-    const files = await gapi.client.drive.files.list({
-      q: `name='${traineeName}' and mimeType='application/vnd.google-apps.spreadsheet'`,
-      fields: 'files(id, name)'
-    });
-    
-    if (files.result.files && files.result.files.length > 0) {
-      return gapi.client.sheets.spreadsheets.get({
-        spreadsheetId: files.result.files[0].id
-      });
-    }
-    
-    // Create new spreadsheet if not found
-    const newSpreadsheet = await gapi.client.sheets.spreadsheets.create({
-      properties: {
-        title: traineeName
-      }
-    });
-    
-    return newSpreadsheet;
-  } catch (error) {
-    console.error('Error getting/creating spreadsheet:', error);
-    throw error;
-  }
-};
-
-const getOrCreateSheet = async (spreadsheet: any, date: string) => {
-  try {
-    const spreadsheetId = spreadsheet.result.spreadsheetId;
-    
-    // Try to find existing sheet
-    const sheets = spreadsheet.result.sheets || [];
-    const existingSheet = sheets.find((sheet: any) => sheet.properties.title === date);
-    
-    if (existingSheet) {
-      return existingSheet;
-    }
-    
-    // Create new sheet if not found
-    const newSheet = await gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      resource: {
-        requests: [{
-          addSheet: {
-            properties: {
-              title: date
-            }
-          }
-        }]
-      }
-    });
-    
-    return newSheet.result.replies[0].addSheet;
-  } catch (error) {
-    console.error('Error getting/creating sheet:', error);
     throw error;
   }
 }; 
