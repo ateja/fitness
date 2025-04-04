@@ -43,7 +43,7 @@ const DISCOVERY_DOCS = [
   'https://sheets.googleapis.com/$discovery/rest?version=v4',
   'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
 ];
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email';
 
 let tokenClient: any;
 let gapiInited = false;
@@ -394,4 +394,49 @@ export const saveWorkoutData = async (
     console.error('Error saving workout data:', error);
     throw error;
   }
+};
+
+export const getToken = async () => {
+  if (!gapiInited) {
+    console.warn('Google API not initialized during token request');
+    return null;
+  }
+  
+  const token = gapi.client.getToken();
+  if (!token) {
+    // If no token exists, try to get a new one
+    try {
+      await signIn();
+      const newToken = gapi.client.getToken();
+      if (!newToken) {
+        throw new Error('Failed to get access token');
+      }
+      return newToken.access_token;
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return null;
+    }
+  }
+  
+  // Verify the token has the required scopes
+  const tokenInfo = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${token.access_token}`)
+    .then(res => res.json())
+    .catch(() => null);
+  
+  if (!tokenInfo || tokenInfo.error) {
+    // Token is invalid or expired, try to get a new one
+    try {
+      await signIn();
+      const newToken = gapi.client.getToken();
+      if (!newToken) {
+        throw new Error('Failed to get access token');
+      }
+      return newToken.access_token;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return null;
+    }
+  }
+  
+  return token.access_token;
 }; 

@@ -2,20 +2,12 @@ import React, { useState } from 'react';
 import './FileUpload.css';
 import WorkoutPanel from './WorkoutPanel';
 import { WorkoutData } from '../services/googleSheets';
-
-const API_BASE_URL = 'http://localhost:5000';
+import { uploadImage } from '../services/api';
+import { ExerciseResponse } from '../types/exercise';
 
 interface FileUploadProps {
   traineeName: string;
   traineeId: string;
-}
-
-interface ExerciseResponse {
-  name: string;
-  sets: Array<{
-    reps: number;
-    weight: number;
-  }>;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
@@ -42,23 +34,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
     setUploadStatus('Uploading...');
     setError(null);
 
-    const formData = new FormData();
-    formData.append('image', selectedFile);
-
     try {
-      console.log('Sending request to server...');
-      const response = await fetch(`${API_BASE_URL}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
+      const data = await uploadImage(selectedFile);
 
       if (!data.exercises) {
         console.error('Invalid data structure:', data);
@@ -80,7 +57,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
       setSelectedFile(null);
     } catch (err) {
       console.error('Upload error:', err);
-      setError('Failed to upload file. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to upload file. Please try again.');
       setUploadStatus('');
     }
   };

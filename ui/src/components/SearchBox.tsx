@@ -102,7 +102,9 @@ const SearchBox: React.FC<Props> = ({ exercises, onExerciseSelect }) => {
               <div className="result-name">{item.name}</div>
               <div className="result-details">
                 {item.force && <span className="force">{item.force}</span>}
-                <span className="muscles">{item.primaryMuscles.join(', ')}</span>
+                {item.primaryMuscles && (
+                  <span className="muscles">{item.primaryMuscles.join(', ')}</span>
+                )}
               </div>
             </div>
           ))}
