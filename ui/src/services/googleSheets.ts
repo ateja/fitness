@@ -1,20 +1,29 @@
-import { gapi } from 'gapi-script';
+// Remove gapi import as we're not using it anymore
+// import { gapi } from 'gapi-script';
 
-// Use window._env_ for production environment variables
-const CLIENT_ID = process.env.NODE_ENV === 'production' 
-  ? window._env_?.REACT_APP_GOOGLE_CLIENT_ID 
-  : process.env.REACT_APP_GOOGLE_CLIENT_ID;
+// Get environment variables with fallbacks
+const getEnvVar = (key: string): string | undefined => {
+  // Try window._env_ first (production)
+  if (window._env_ && window._env_[key]) {
+    return window._env_[key];
+  }
+  // Fall back to process.env (development)
+  return process.env[key];
+};
 
-const API_KEY = process.env.NODE_ENV === 'production'
-  ? window._env_?.REACT_APP_GOOGLE_API_KEY
-  : process.env.REACT_APP_GOOGLE_API_KEY;
+const CLIENT_ID = getEnvVar('REACT_APP_GOOGLE_CLIENT_ID');
+const API_KEY = getEnvVar('REACT_APP_GOOGLE_API_KEY');
 
 // Debug logging
 console.log('Environment variables:', {
   CLIENT_ID,
   API_KEY,
   NODE_ENV: process.env.NODE_ENV,
-  WINDOW_ENV: window._env_
+  WINDOW_ENV: window._env_,
+  PROCESS_ENV: {
+    REACT_APP_GOOGLE_CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID,
+    REACT_APP_GOOGLE_API_KEY: process.env.REACT_APP_GOOGLE_API_KEY
+  }
 });
 
 const DISCOVERY_DOCS = [
@@ -23,8 +32,11 @@ const DISCOVERY_DOCS = [
 ];
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly';
 
-let gapiInitialized = false;
+let tokenClient: any;
+let gapiInited = false;
+let gisInited = false;
 
+// Initialize Google Identity Services
 export const initGoogleSheets = async () => {
   try {
     console.log('Initializing Google Sheets API...');
@@ -35,35 +47,44 @@ export const initGoogleSheets = async () => {
       throw new Error('Missing Google API credentials. Please check your .env file.');
     }
 
-    if (gapiInitialized) {
-      console.log('Google API already initialized');
-      return;
-    }
-
-    await new Promise((resolve, reject) => {
-      gapi.load('client:auth2', {
-        callback: async () => {
+    // Load the Google API client library
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://apis.google.com/js/api.js';
+      script.onload = () => {
+        gapi.load('client', async () => {
           try {
             await gapi.client.init({
               apiKey: API_KEY,
-              clientId: CLIENT_ID,
               discoveryDocs: DISCOVERY_DOCS,
-              scope: SCOPES
             });
-            gapiInitialized = true;
-            console.log('Google Sheets API initialized successfully');
-            resolve(true);
+            gapiInited = true;
+            resolve();
           } catch (error) {
             console.error('Error initializing gapi client:', error);
             reject(error);
           }
-        },
-        onerror: (error: Error) => {
-          console.error('Error loading gapi:', error);
-          reject(error);
-        }
-      });
+        });
+      };
+      script.onerror = (error) => {
+        console.error('Error loading gapi script:', error);
+        reject(error);
+      };
+      document.head.appendChild(script);
     });
+
+    // Initialize Google Identity Services
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: (response: { error?: string }) => {
+        // This will be overridden in the signIn function
+        console.log('Token client callback:', response);
+      }
+    });
+    gisInited = true;
+
+    console.log('Google Sheets API initialized successfully');
   } catch (error) {
     console.error('Failed to initialize Google Sheets API:', error);
     throw error;
@@ -71,30 +92,44 @@ export const initGoogleSheets = async () => {
 };
 
 export const signIn = async () => {
-  if (!gapiInitialized) {
-    throw new Error('Google API not initialized');
+  if (!gisInited) {
+    throw new Error('Google Identity Services not initialized');
   }
-  try {
-    await gapi.auth2.getAuthInstance().signIn();
-    return true;
-  } catch (error) {
-    console.error('Error signing in:', error);
-    return false;
-  }
+
+  return new Promise<boolean>((resolve) => {
+    tokenClient.callback = async (resp: any) => {
+      if (resp.error !== undefined) {
+        throw new Error(resp.error);
+      }
+      resolve(true);
+    };
+
+    if (gapi.client.getToken() === null) {
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  });
 };
 
 export const signOut = () => {
-  if (!gapiInitialized) {
-    throw new Error('Google API not initialized');
+  if (!gapiInited) {
+    console.warn('Google API not initialized during sign out');
+    return;
   }
-  gapi.auth2.getAuthInstance().signOut();
+  const token = gapi.client.getToken();
+  if (token !== null) {
+    google.accounts.oauth2.revoke(token.access_token);
+    gapi.client.setToken(null);
+  }
 };
 
 export const isSignedIn = () => {
-  if (!gapiInitialized) {
+  if (!gapiInited) {
+    console.warn('Google API not initialized during auth check');
     return false;
   }
-  return gapi.auth2.getAuthInstance().isSignedIn.get();
+  return gapi.client.getToken() !== null;
 };
 
 export const getSpreadsheetData = async (spreadsheetId: string, range: string) => {
@@ -142,7 +177,7 @@ interface DriveFile {
 }
 
 export const listTraineeFiles = async (): Promise<TraineeFile[]> => {
-  if (!gapiInitialized) {
+  if (!gapiInited) {
     throw new Error('Google API not initialized');
   }
 
@@ -185,7 +220,7 @@ interface Sheet {
 }
 
 export const getSheetTabs = async (spreadsheetId: string): Promise<string[]> => {
-  if (!gapiInitialized) {
+  if (!gapiInited) {
     throw new Error('Google API not initialized');
   }
 
@@ -203,7 +238,7 @@ export const getSheetTabs = async (spreadsheetId: string): Promise<string[]> => 
 };
 
 export const getUniqueDates = async (spreadsheetId: string, sheetName: string): Promise<string[]> => {
-  if (!gapiInitialized) {
+  if (!gapiInited) {
     throw new Error('Google API not initialized');
   }
 
@@ -238,7 +273,7 @@ export interface WorkoutData {
 }
 
 export const getWorkoutData = async (spreadsheetId: string, sheetName: string, date: string): Promise<WorkoutData[]> => {
-  if (!gapiInitialized) {
+  if (!gapiInited) {
     throw new Error('Google API not initialized');
   }
 
@@ -299,7 +334,7 @@ export const saveWorkoutData = async (
   workoutData: WorkoutData[],
   _traineeName: string
 ): Promise<void> => {
-  if (!gapiInitialized) {
+  if (!gapiInited) {
     throw new Error('Google API not initialized');
   }
 

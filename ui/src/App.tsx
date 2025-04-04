@@ -66,11 +66,6 @@ function App() {
     setSelectedTrainee(trainee);
   };
 
-  const handleCreateWorkout = () => {
-    // TODO: Implement workout creation logic
-    console.log('Create workout clicked');
-  };
-
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -107,7 +102,6 @@ function App() {
       </div>
       <Wizard 
         onLoadWorkout={handleLoadWorkout}
-        onCreateWorkout={handleCreateWorkout}
       />
       {selectedTrainee && (
         <FileUpload 

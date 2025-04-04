@@ -6,10 +6,9 @@ import { TraineeFile, WorkoutData } from '../services/googleSheets';
 
 interface WizardProps {
   onLoadWorkout: (trainee: TraineeFile) => void;
-  onCreateWorkout: () => void;
 }
 
-const Wizard: React.FC<WizardProps> = ({ onLoadWorkout, onCreateWorkout }) => {
+const Wizard: React.FC<WizardProps> = ({ onLoadWorkout }) => {
   const [selectedTrainee, setSelectedTrainee] = useState<TraineeFile | null>(null);
   const [workoutData, setWorkoutData] = useState<WorkoutData[]>([]);
 
@@ -38,7 +37,6 @@ const Wizard: React.FC<WizardProps> = ({ onLoadWorkout, onCreateWorkout }) => {
           ))}
         </div>
       )}
-      <button onClick={onCreateWorkout}>Create New Workout</button>
     </div>
   );
 };
