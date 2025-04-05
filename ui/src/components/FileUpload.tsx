@@ -74,7 +74,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
         <button
           onClick={handleUpload}
           disabled={!selectedFile}
-          className="upload-button"
+          className="button"
         >
           Upload
         </button>

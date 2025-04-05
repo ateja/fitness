@@ -82,7 +82,7 @@ function App() {
           <p className="sign-in-message">Please sign in to access your workout data</p>
           <button 
             onClick={handleSignIn} 
-            className="sign-in-button"
+            className="button"
             disabled={isLoading}
           >
             {isLoading ? 'Signing in...' : 'Sign in with Google'}
@@ -96,7 +96,7 @@ function App() {
     <div className="app-container">
       <div className="header">
         <h1>Fitness Tracker</h1>
-        <button onClick={handleSignOut} className="sign-out-button">
+        <button onClick={handleSignOut} className="button">
           Sign Out
         </button>
       </div>

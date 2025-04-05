@@ -204,25 +204,36 @@
 }
 
 .save-button {
-  padding: 8px 16px;
-  background-color: #635bff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
   font-weight: 500;
+  color: white;
+  background-color: #4a90e2;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   height: 40px;
 }
 
 .save-button:hover {
-  background-color: #4f46e5;
+  background-color: #357abd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.save-button:active {
+  background-color: #2d6da3;
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .save-button:disabled {
-  background-color: #e6e6e6;
+  background-color: #cccccc;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .save-status {

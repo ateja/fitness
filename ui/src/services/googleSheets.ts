@@ -352,6 +352,28 @@ export const saveWorkoutData = async (
   }
 
   try {
+    // Check if sheet exists and create it if it doesn't
+    try {
+      await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A:E`
+      });
+    } catch (error) {
+      // If sheet doesn't exist, create it
+      await (gapi.client.sheets.spreadsheets as any).batchUpdate({
+        spreadsheetId,
+        resource: {
+          requests: [{
+            addSheet: {
+              properties: {
+                title: sheetName
+              }
+            }
+          }]
+        }
+      });
+    }
+
     // Get current date
     const today = new Date().toISOString().split('T')[0];
     

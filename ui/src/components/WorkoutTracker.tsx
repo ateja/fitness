@@ -17,7 +17,7 @@ const WorkoutTracker: React.FC = () => {
         {exercises.map((exercise) => (
           <button
             key={exercise.id}
-            className={`exercise-button ${selectedExercise?.id === exercise.id ? 'selected' : ''}`}
+            className={`button ${selectedExercise?.id === exercise.id ? 'selected' : ''}`}
             onClick={() => handleExerciseSelect(exercise)}
           >
             {exercise.name}
