@@ -1,5 +1,5 @@
 import { getToken } from './googleSheets';
-import { Exercise, ExerciseResponse } from '../types/exercise';
+import { Exercise, UploadResponse } from '../types/exercise';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -14,7 +14,7 @@ export const getAuthHeaders = async () => {
   };
 };
 
-export const uploadImage = async (file: File): Promise<{ exercises: ExerciseResponse[] }> => {
+export const uploadImage = async (file: File): Promise<UploadResponse> => {
   const token = await getToken();
   if (!token) {
     throw new Error('Not authenticated. Please sign in with Google.');
@@ -35,12 +35,13 @@ export const uploadImage = async (file: File): Promise<{ exercises: ExerciseResp
     throw new Error('Authentication failed. Please sign in again.');
   }
 
+  const data = await response.json();
+  
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Upload failed');
+    throw new Error(data.error || 'Upload failed');
   }
 
-  return response.json();
+  return data;
 };
 
 export const getExercises = async (): Promise<Exercise[]> => {

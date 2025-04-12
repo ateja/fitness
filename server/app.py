@@ -87,83 +87,98 @@ def process_image_with_openai(image_data):
     # Encode the image data to base64
     base64_image = base64.b64encode(image_data).decode("utf-8")
     
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    { 
-                        "type": "text", 
-                        "text": (
-                            "Analyze this exercise image and provide a JSON response with the following schema:\n"
-                            "{\n"
-                            "  \"type\": \"object\",\n"
-                            "  \"properties\": {\n"
-                            "    \"date\": { \"type\": \"string\" },\n"
-                            "    \"exercises\": {\n"
-                            "      \"type\": \"array\",\n"
-                            "      \"items\": {\n"
-                            "        \"type\": \"object\",\n"
-                            "        \"properties\": {\n"
-                            "          \"name\": { \"type\": \"string\" },\n"
-                            "          \"sets\": {\n"
-                            "            \"type\": \"array\",\n"
-                            "            \"items\": {\n"
-                            "              \"type\": \"object\",\n"
-                            "              \"properties\": {\n"
-                            "                \"reps\": { \"type\": \"integer\", \"minimum\": 0 },\n"
-                            "                \"weight\": { \"type\": \"number\", \"minimum\": 0 }\n"
-                            "              },\n"
-                            "              \"required\": [\"reps\", \"weight\"],\n"
-                            "              \"additionalProperties\": false\n"
-                            "            }\n"
-                            "          }\n"
-                            "        },\n"
-                            "        \"required\": [\"name\", \"sets\"],\n"
-                            "        \"additionalProperties\": false\n"
-                            "      }\n"
-                            "    }\n"
-                            "  },\n"
-                            "  \"required\": [\"date\", \"exercises\"],\n"
-                            "  \"additionalProperties\": false\n"
-                            "}\n"
-                        )
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
-                        },
-                    },
-                ],
-            }
-        ],
-        max_tokens=1000
-    )
-    
-    # Print the raw response for debugging
-    print("OpenAI Response:", response.choices[0].message.content)
-    
-    # Clean up the response by removing markdown code block markers
-    content = response.choices[0].message.content
-    if content.startswith("```json"):
-        content = content[7:]  # Remove ```json
-    if content.endswith("```"):
-        content = content[:-3]  # Remove ```
-    content = content.strip()  # Remove any extra whitespace
-    
-    # Parse the response content as JSON
     try:
-        result = json.loads(content)
-        return result
-    except json.JSONDecodeError as e:
-        print("JSON Parse Error:", str(e))
-        # If the response isn't valid JSON, return a structured error
-        return {
-            "error": "Failed to parse OpenAI response",
-            "raw_response": content
-        }
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        { 
+                            "type": "text", 
+                            "text": (
+                                "Analyze this exercise image and provide a JSON response with the following schema:\n"
+                                "{\n"
+                                "  \"type\": \"object\",\n"
+                                "  \"properties\": {\n"
+                                "    \"date\": { \"type\": \"string\" },\n"
+                                "    \"exercises\": {\n"
+                                "      \"type\": \"array\",\n"
+                                "      \"items\": {\n"
+                                "        \"type\": \"object\",\n"
+                                "        \"properties\": {\n"
+                                "          \"name\": { \"type\": \"string\" },\n"
+                                "          \"sets\": {\n"
+                                "            \"type\": \"array\",\n"
+                                "            \"items\": {\n"
+                                "              \"type\": \"object\",\n"
+                                "              \"properties\": {\n"
+                                "                \"reps\": { \"type\": \"integer\", \"minimum\": 0 },\n"
+                                "                \"weight\": { \"type\": \"number\", \"minimum\": 0 }\n"
+                                "              },\n"
+                                "              \"required\": [\"reps\", \"weight\"],\n"
+                                "              \"additionalProperties\": false\n"
+                                "            }\n"
+                                "          }\n"
+                                "        },\n"
+                                "        \"required\": [\"name\", \"sets\"],\n"
+                                "        \"additionalProperties\": false\n"
+                                "      }\n"
+                                "    }\n"
+                                "  },\n"
+                                "  \"required\": [\"date\", \"exercises\"],\n"
+                                "  \"additionalProperties\": false\n"
+                                "}\n"
+                            )
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            max_tokens=1000
+        )
+        
+        # Print the raw response for debugging
+        print("OpenAI Response:", response.choices[0].message.content)
+        
+        # Clean up the response by removing markdown code block markers
+        content = response.choices[0].message.content
+        if content.startswith("```json"):
+            content = content[7:]  # Remove ```json
+        if content.endswith("```"):
+            content = content[:-3]  # Remove ```
+        content = content.strip()  # Remove any extra whitespace
+        
+        # Parse the response content as JSON
+        try:
+            result = json.loads(content)
+            return result
+        except json.JSONDecodeError as e:
+            print("JSON Parse Error:", str(e))
+            # If the response isn't valid JSON, return a structured error
+            return {
+                "error": "Failed to parse OpenAI response",
+                "raw_response": content
+            }
+    except Exception as e:
+        error_message = str(e)
+        if "insufficient_quota" in error_message.lower() or "quota_exceeded" in error_message.lower():
+            return {
+                "error": "Insufficient OpenAI credits. Please add more credits to your account."
+            }
+        elif "authentication" in error_message.lower():
+            return {
+                "error": "OpenAI authentication failed. Please check your API key."
+            }
+        else:
+            return {
+                "error": f"OpenAI API error: {error_message}"
+            }
 
 def get_mock_response():
     return {
@@ -204,6 +219,10 @@ def upload_image():
     else:
         # Process the image with OpenAI
         result = process_image_with_openai(image_file.read())
+    
+    # If the result contains an error, return it with a 400 status code
+    if isinstance(result, dict) and "error" in result:
+        return jsonify(result), 400
     
     # Return the result directly
     return jsonify(result)

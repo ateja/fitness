@@ -13,6 +13,11 @@ export interface ExerciseResponse {
   }>;
 }
 
+export interface UploadResponse {
+  exercises?: ExerciseResponse[];
+  error?: string;
+}
+
 export interface WorkoutData {
   exercise: string;
   sets: Array<{

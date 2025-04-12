@@ -38,8 +38,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ traineeName, traineeId }) => {
       const data = await uploadImage(selectedFile);
 
       if (!data.exercises) {
-        console.error('Invalid data structure:', data);
-        throw new Error('Invalid response format from server');
+        throw new Error(data.error || 'Invalid response format from server');
       }
 
       const processedData = data.exercises.map((exercise: ExerciseResponse) => ({
