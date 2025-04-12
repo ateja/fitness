@@ -419,7 +419,6 @@ export const saveWorkoutData = async (
     });
     
     const existingRows = response.result.values || [];
-    const headerRow = existingRows.length > 0 ? existingRows[0] : ['Date', 'Exercise', 'Set', 'Reps', 'Weight'];
     
     // Prepare arrays for new and updated rows
     const updatedRows: string[][] = [];
