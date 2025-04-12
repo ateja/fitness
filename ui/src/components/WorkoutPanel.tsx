@@ -51,7 +51,7 @@ const WorkoutPanel: React.FC<WorkoutPanelProps> = ({ exercise, sets, traineeName
       }];
 
       const monthName = getMonthName(selectedDate);
-      await saveWorkoutData(traineeId, monthName, workoutData, traineeName);
+      await saveWorkoutData(traineeId, monthName, workoutData, traineeName, selectedDate);
       setSaveStatus({ type: 'success', message: 'Workout saved successfully!' });
     } catch (error) {
       console.error('Error saving workout:', error);

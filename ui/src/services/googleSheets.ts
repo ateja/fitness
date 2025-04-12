@@ -382,7 +382,8 @@ export const saveWorkoutData = async (
   spreadsheetId: string,
   sheetName: string,
   workoutData: WorkoutData[],
-  _traineeName: string
+  _traineeName: string,
+  date: string
 ): Promise<void> => {
   if (!gapiInited) {
     throw new Error('Google API not initialized');
@@ -410,45 +411,98 @@ export const saveWorkoutData = async (
         }
       });
     }
-
-    // Get current date
-    const today = new Date().toISOString().split('T')[0];
     
-    // Prepare the data to be written
-    const values: string[][] = [];
-    
-    // Add header row if sheet is empty
+    // Get all existing rows
     const response = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${sheetName}!A:E`
     });
     
-    if (!response.result.values || response.result.values.length === 0) {
-      values.push(['Date', 'Exercise', 'Set', 'Reps', 'Weight']);
-    }
+    const existingRows = response.result.values || [];
+    const headerRow = existingRows.length > 0 ? existingRows[0] : ['Date', 'Exercise', 'Set', 'Reps', 'Weight'];
     
-    // Add workout data
+    // Prepare arrays for new and updated rows
+    const updatedRows: string[][] = [];
+    const newRows: string[][] = [];
+    
+    // Process each workout
     for (const workout of workoutData) {
-      for (const set of workout.sets) {
-        values.push([
-          today,
-          workout.exercise,
-          set.setNumber.toString(),
-          set.reps,
-          set.weight
-        ]);
+      // Find existing rows for this exercise on this date
+      const existingExerciseRows = existingRows.filter((row: string[]) => 
+        row[0] === date && row[1] === workout.exercise
+      );
+      
+      if (existingExerciseRows.length > 0) {
+        // Update existing rows
+        for (const set of workout.sets) {
+          const existingSetRow = existingExerciseRows.find((row: string[]) => 
+            parseInt(row[2]) === set.setNumber
+          );
+          
+          if (existingSetRow) {
+            // Update existing set
+            existingSetRow[3] = set.reps;
+            existingSetRow[4] = set.weight;
+            updatedRows.push(existingSetRow);
+          } else {
+            // Add new set for existing exercise
+            newRows.push([
+              date,
+              workout.exercise,
+              set.setNumber.toString(),
+              set.reps,
+              set.weight
+            ]);
+          }
+        }
+      } else {
+        // Add all sets as new rows
+        for (const set of workout.sets) {
+          newRows.push([
+            date,
+            workout.exercise,
+            set.setNumber.toString(),
+            set.reps,
+            set.weight
+          ]);
+        }
       }
     }
     
-    // Write the data
-    await gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheetName}!A:E`,
-      valueInputOption: 'RAW',
-      resource: {
-        values
+    // Update existing rows
+    if (updatedRows.length > 0) {
+      // Find the row numbers for the rows to update
+      const rowNumbers = updatedRows.map(row => 
+        existingRows.findIndex((r: string[]) => 
+          r[0] === row[0] && r[1] === row[1] && r[2] === row[2]
+        ) + 1
+      );
+      
+      // Update each row
+      for (let i = 0; i < updatedRows.length; i++) {
+        const range = `${sheetName}!A${rowNumbers[i]}:E${rowNumbers[i]}`;
+        await gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range,
+          valueInputOption: 'RAW',
+          resource: {
+            values: [updatedRows[i]]
+          }
+        });
       }
-    });
+    }
+    
+    // Append new rows
+    if (newRows.length > 0) {
+      await gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetName}!A:E`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: newRows
+        }
+      });
+    }
   } catch (error) {
     console.error('Error saving workout data:', error);
     throw error;
