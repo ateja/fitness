@@ -165,6 +165,29 @@ def process_image_with_openai(image_data):
             "raw_response": content
         }
 
+def get_mock_response():
+    return {
+        "date": "2024-03-20",
+        "exercises": [
+            {
+                "name": "Bench Press",
+                "sets": [
+                    {"reps": 10, "weight": 135},
+                    {"reps": 8, "weight": 155},
+                    {"reps": 6, "weight": 175}
+                ]
+            },
+            {
+                "name": "Squat",
+                "sets": [
+                    {"reps": 12, "weight": 185},
+                    {"reps": 10, "weight": 205},
+                    {"reps": 8, "weight": 225}
+                ]
+            }
+        ]
+    }
+
 @app.route('/upload', methods=['POST'])
 @validate_token
 def upload_image():
@@ -175,8 +198,12 @@ def upload_image():
     if image_file.filename == '':
         return jsonify({"error": "No selected file"}), 400
     
-    # Process the image with OpenAI
-    result = process_image_with_openai(image_file.read())
+    # Check if mock upload is enabled
+    if os.getenv("USE_MOCK_UPLOAD", "false").lower() == "true":
+        result = get_mock_response()
+    else:
+        # Process the image with OpenAI
+        result = process_image_with_openai(image_file.read())
     
     # Return the result directly
     return jsonify(result)
