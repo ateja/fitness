@@ -15,6 +15,10 @@ function App() {
     const initializeApp = async () => {
       try {
         await initGoogleSheets();
+        // Check if we have a stored token and restore it
+        if (isSignedIn()) {
+          setIsAuthenticated(true);
+        }
         setLoading(false);
       } catch (err) {
         console.error('Initialization error:', err);

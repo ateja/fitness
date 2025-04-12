@@ -49,6 +49,23 @@ let tokenClient: any;
 let gapiInited = false;
 let gisInited = false;
 
+// Add these constants at the top with other constants
+const TOKEN_STORAGE_KEY = 'google_auth_token';
+
+// Add these helper functions after the constants
+const storeToken = (token: { access_token: string } | null) => {
+  if (token) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(token));
+  } else {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+};
+
+const getStoredToken = (): { access_token: string } | null => {
+  const stored = localStorage.getItem(TOKEN_STORAGE_KEY);
+  return stored ? JSON.parse(stored) : null;
+};
+
 // Initialize Google Identity Services
 export const initGoogleSheets = async () => {
   try {
@@ -114,6 +131,10 @@ export const signIn = async () => {
       if (resp.error !== undefined) {
         throw new Error(resp.error);
       }
+      const token = gapi.client.getToken();
+      if (token) {
+        storeToken(token);
+      }
       resolve(true);
     };
 
@@ -134,6 +155,7 @@ export const signOut = () => {
   if (token !== null) {
     google.accounts.oauth2.revoke(token.access_token);
     gapi.client.setToken(null);
+    storeToken(null);
   }
 };
 
@@ -142,7 +164,22 @@ export const isSignedIn = () => {
     console.warn('Google API not initialized during auth check');
     return false;
   }
-  return gapi.client.getToken() !== null;
+  
+  // First check in-memory token
+  const inMemoryToken = gapi.client.getToken();
+  if (inMemoryToken) {
+    return true;
+  }
+  
+  // If no in-memory token, check localStorage
+  const storedToken = getStoredToken();
+  if (storedToken) {
+    // Restore the token to gapi client
+    gapi.client.setToken(storedToken);
+    return true;
+  }
+  
+  return false;
 };
 
 export const getSpreadsheetData = async (spreadsheetId: string, range: string) => {
